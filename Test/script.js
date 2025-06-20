@@ -1,3 +1,5 @@
+import { TaskManager } from "./TaskManager.js";
+
 const inputEl = document.getElementById("input");
 const emailBtn = document.getElementById("emailBtn");
 const inputTask = document.getElementById("inputTask");
@@ -15,16 +17,10 @@ const timer = document.getElementById("timer");
 
 let tasks = [];
 
-loadTaskFromLS();
+const taskManager = new TaskManager();
+
+// loadTaskFromLS();
 displayTask();
-
-function saveToLocalStorage() {
-  localStorage.setItem("tasks", JSON.stringify(tasks));
-}
-
-function loadTaskFromLS() {
-  tasks = JSON.parse(localStorage.getItem("tasks"));
-}
 
 function handelError(msg, el) {
   el.textContent = msg;
@@ -51,12 +47,12 @@ function handelSubmit(e) {
 }
 
 function displayTask() {
-  loadTaskFromLS();
+  // loadTaskFromLS();
   taskContainer.textContent = "";
-  if (tasks) {
-    tasks.forEach((task) => {
-      const li = document.createElement("li");
-      const taskElement = `
+
+  taskManager.getTasks().forEach((task) => {
+    const li = document.createElement("li");
+    const taskElement = `
       <div
         id="${task.id}"
         class="todo flex items-center justify-center max-w-md mx-auto bg-white shadow-md rounded-xl p-3 space-x-4 border border-gray-200"
@@ -74,20 +70,18 @@ function displayTask() {
           ✕
         </button>
       </div>`;
-      li.innerHTML = taskElement;
-      taskContainer.appendChild(li);
-      console.log(tasks);
-    });
-  }
+    li.innerHTML = taskElement;
+    taskContainer.appendChild(li);
+    console.log(tasks);
+  });
 }
 
-function addTask(e) {
+function addTask() {
   const err2 = document.getElementById("error2");
 
   if (inputTask.value) {
     err2.style.display = "none";
-    tasks.push({ id: Date.now(), text: inputTask.value, completed: false });
-    saveToLocalStorage();
+    taskManager.addTask(inputTask.value);
     displayTask();
   } else {
     handelError("Enter Task", err2);
@@ -122,7 +116,7 @@ let isRed = true;
 function drawSquare(color) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.fillStyle = color;
-  ctx.fillRect(50, 50, 100, 100); 
+  ctx.fillRect(50, 50, 100, 100);
 }
 
 // Initial draw
@@ -133,7 +127,7 @@ function timerFn() {
   let sec = 0;
   setInterval(() => {
     sec += 1;
-    timer.textContent = `Since Page Load ${sec} Seconds`
+    timer.textContent = `Since Page Load ${sec} Seconds`;
   }, 1000);
 }
 timerFn();
@@ -143,33 +137,26 @@ emailBtn.addEventListener("click", handelSubmit);
 taskBtn.addEventListener("click", addTask);
 
 taskContainer.addEventListener("click", (e) => {
-  console.log((e.target = "checkbox"));
+  const todoDiv = e.target.closest(".todo");
+  const id = Number(todoDiv.id);
 
   if (e.target.closest('input[type="checkbox"]')) {
     const todoDiv = e.target.closest(".todo");
     const checkbox = e.target;
     const taskText = todoDiv.querySelector(".task-text");
     const editBtn = todoDiv.querySelector(".edit");
-
+    taskManager.toggleCompletion(id, checkbox.checked);
     taskText.classList.toggle("line-through", checkbox.checked);
     editBtn.classList.toggle("hidden", checkbox.checked);
-    saveToLocalStorage();
   } else if (e.target.closest(".delete")) {
-    const taskId = Number(e.target.parentElement.id);
-    tasks = tasks.filter((task) => task.id !== taskId);
-    saveToLocalStorage();
+    taskManager.deleteTask(id);
     displayTask();
   } else if (e.target.closest(".edit")) {
-    const todoDiv = e.target.closest(".todo");
-    const id = Number(todoDiv.id);
-
-    const taskToEdit = tasks.find((task) => task.id === id);
-    if (!taskToEdit) return;
-
+    const taskToEdit = taskManager.getTasks().find((task) => task.id === id);
     const newText = prompt("Edit your task:", taskToEdit.text);
-    if (newText !== null && newText.trim() !== "") {
-      taskToEdit.text = newText.trim();
-      saveToLocalStorage();
+
+    if (newText && newText.trim() !== "") {
+      taskManager.editTask(id, newText);
       displayTask();
     }
   }
